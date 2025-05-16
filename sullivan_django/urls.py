@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('task/', include('task.urls')),
     # Rutas API por módulo
     path('estudiantes/', include('estudiantes.urls')),
     path('personas/', include('personas.urls')),
