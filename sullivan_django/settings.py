@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'drf_yasg',
     'rest_framework',
     'task',
     'estudiantes', 
@@ -86,11 +87,11 @@ WSGI_APPLICATION = 'sullivan_django.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'sullivan_test',
+        'NAME': 'sullivan',
         'USER': 'root',
         'PASSWORD': '',
         'HOST': 'localhost',
-        'PORT': '3306'
+        'PORT': '3307'
     }
 }
 
@@ -137,4 +138,4 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 #cors autorization
-CORS_ALLOWED_ORIGINS = []
+CORS_ALLOW_ALL_ORIGINS = True  # Solo en desarrollo
