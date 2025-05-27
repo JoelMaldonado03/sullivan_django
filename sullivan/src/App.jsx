@@ -1,16 +1,17 @@
-import {BrowserRouter, Routes, Route, Navigate} from 'react-router-dom';
-import { TasksPage } from './pages/TasksPage'
-import { TasksFormPage } from './pages/TasksFormPage'
-import { Navigation } from './components/Navigation'; 
+import { useState } from 'react'
+import reactLogo from './assets/react.svg'
+import viteLogo from '/vite.svg'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import './App.css'
+import TablaEstudiantes from './components/pure/TablaEstudiantes/TablaEstudiantes'
 
 function App() {
+
   return (
     <BrowserRouter>
-    <Navigation/>
       <Routes>
-        <Route path="/" element={<Navigate to="/tasks"/>} />
-        <Route path="/tasks" element={<TasksPage />} />
-        <Route path="/tasks-create" element={<TasksFormPage />} />
+        <Route path='/estudiantes' element={<TablaEstudiantes/>} />
+        <Route path='/admin' element={<TablaEstudiantes/>} />
       </Routes>
     </BrowserRouter>
   )
