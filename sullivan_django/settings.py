@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_yasg',
     'rest_framework',
+    'rest_framework.authtoken',
     'task',
     'estudiantes', 
     'personas',
@@ -48,6 +49,7 @@ INSTALLED_APPS = [
     'clases',
     'actividades',
     'eventos',
+    'usuarios',
 ]
 
 MIDDLEWARE = [
@@ -62,6 +64,9 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'sullivan_django.urls'
+
+STATICFILES_DIRS = [ BASE_DIR / "static" ]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 TEMPLATES = [
     {
@@ -89,9 +94,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'sullivan',
         'USER': 'root',
-        'PASSWORD': '',
+        'PASSWORD': '123456789',
         'HOST': 'localhost',
-        'PORT': '3306'
+        'PORT': '3306',
     }
 }
 
