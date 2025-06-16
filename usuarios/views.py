@@ -6,6 +6,11 @@ from django.contrib import messages
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.hashers import check_password
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+
+
 def registrar_usuario(request):
     if request.method == 'POST':
         nombre = request.POST.get('nombre')            
@@ -26,23 +31,27 @@ def registrar_usuario(request):
     return render(request, 'usuarios/registro.html')
 
 
-def login_usuario(request):
-    if request.method == 'POST':
-        nombre = request.POST['nombre']
-        clave = request.POST['password']
+@api_view(['POST'])
+def login(request):
+    email = request.data.get('email')
+    password = request.data.get('password')
 
-        try:
-            usuario = Usuario.objects.get(Nombre_Usuario=nombre)
-            if check_password(clave, usuario.Contrasena):
-                request.session['usuario_id'] = usuario.ID_Usuario
-                request.session['usuario_nombre'] = usuario.Nombre_Usuario
-                return redirect('vista_estudiante')  # o donde lo quieras mandar
-            else:
-                messages.error(request, 'Contraseña incorrecta')
-        except Usuario.DoesNotExist:
-            messages.error(request, 'Usuario no encontrado')
-
-    return render(request, 'usuarios/login.html')
+    try:
+        usuario = Usuario.objects.get(email=email)
+        # print(usuario.Contrasena)
+        if password == usuario.Contrasena:
+            return Response({
+                "usuario": {
+                    "id": usuario.ID_Usuario,
+                    "nombre": usuario.Nombre_Usuario,
+                    "email": usuario.email,
+                    "rol": usuario.Rol
+                }
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Contraseña incorrecta"}, status=status.HTTP_401_UNAUTHORIZED)
+    except Usuario.DoesNotExist:
+        return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
 def inicio_view(request):
     return render(request, 'usuarios/inicio.html')
