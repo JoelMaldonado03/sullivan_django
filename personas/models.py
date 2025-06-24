@@ -23,10 +23,10 @@
     #     return f"{self.nombre} {self.apellido} ({self.rol})"
 
 from django.db import models
-from usuarios.models import PerfilUsuario
+from usuarios.models import Usuario
 
 class Persona(models.Model):
-    usuario = models.OneToOneField(PerfilUsuario, on_delete=models.CASCADE)
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     telefono = models.CharField(max_length=15)
