@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_yasg',
     'rest_framework',
-    'task',
+    'rest_framework.authtoken',
     'estudiantes', 
     'personas',
     'cursos',
@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'clases',
     'actividades',
     'eventos',
+    'usuarios',
 ]
 
 MIDDLEWARE = [
@@ -62,6 +63,9 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'sullivan_django.urls'
+
+# STATICFILES_DIRS = [ BASE_DIR / "static" ]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 TEMPLATES = [
     {

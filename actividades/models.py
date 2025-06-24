@@ -1,14 +1,29 @@
+# actividades/models.py
 from django.db import models
-from clases.models import Clase
-# Create your models here.
+from estudiantes.models import Estudiante
+from cursos.models import Curso
+
 class Actividad(models.Model):
-    id_actividad = models.AutoField(primary_key=True, db_column='ID_Actividad')
-    nota = models.CharField(max_length=1, null=True, blank=True, db_column='Nota')
-    descripcion = models.TextField(null=True, blank=True, db_column='Descripcion')
-    clase = models.ForeignKey(Clase, on_delete=models.SET_NULL, null=True, db_column='ID_Clase')
+    titulo = models.CharField(max_length=100)
+    descripcion = models.TextField(blank=True)
+    fecha = models.DateField()
+    curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='actividades')
 
     class Meta:
         db_table = 'actividad'
 
     def __str__(self):
-        return f"Actividad clase {self.clase_id}"
+        return f"{self.titulo} - {self.curso}"
+
+class ActividadEstudiante(models.Model):
+    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE)
+    actividad = models.ForeignKey(Actividad, on_delete=models.CASCADE)
+    entrega = models.BooleanField(default=False)
+    calificacion = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        unique_together = ('estudiante', 'actividad')  # Evita duplicados
+        db_table = 'actividad_estudiante'
+
+    def __str__(self):
+        return f"{self.estudiante} - {self.actividad}"
