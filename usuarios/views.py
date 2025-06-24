@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import PerfilUsuario
 
+
+
 @api_view(['POST'])
 def registrar_usuario(request):
     nombre = request.data.get('nombre')
