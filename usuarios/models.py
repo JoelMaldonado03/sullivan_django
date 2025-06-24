@@ -1,16 +1,16 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-class PerfilUsuario(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    rol = models.CharField(max_length=20, choices=[
-        ("Administrador", "Administrador"),
-        ("Profesor", "Profesor"),
-        ("Acudiente", "Acudiente"),
-    ])
+class Usuario(AbstractUser):
+    ROL_CHOICES = [
+        ('Administrador', 'Administrador'),
+        ('Profesor', 'Profesor'),
+        ('Acudiente', 'Acudiente'),
+    ]
+    rol = models.CharField(max_length=20, choices=ROL_CHOICES)
 
     class Meta:
-        db_table = 'perfil_usuario'
+        db_table = 'usuario'
 
 
     def __str__(self):
