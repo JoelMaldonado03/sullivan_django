@@ -1,7 +1,12 @@
+# usuarios/urls.py
 from django.urls import path
-from . import views
+from .views import CustomTokenObtainPairView, register_user
 
+# from rest_framework.routers import DefaultRouter
+# router = DefaultRouter()
+# router.register(r'', CustomTokenObtainPairView)
 urlpatterns = [
-    path('registro/', views.registrar_usuario, name='registro'),
-    path('login/', views.login_usuario, name='login'),
+    path('register/', register_user, name='register_user'),
+    path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # …otras rutas…
 ]

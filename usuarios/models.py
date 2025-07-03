@@ -9,6 +9,7 @@ class Usuario(AbstractUser):
     ]
     rol = models.CharField(max_length=20, choices=ROL_CHOICES)
 
+
     class Meta:
         db_table = 'usuario'
 
