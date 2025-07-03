@@ -3,7 +3,6 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from usuarios.models import Usuario
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -42,8 +41,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True, required=True)
 
     class Meta:
-        model = User
-        fields = ['username', 'email', 'password', 'password2']
+        model = Usuario
+        fields = ['username', 'email', 'password', 'password2', 'rol']
 
     def validate_password(self, value):
         # Validar que la contraseña tenga al menos 8 caracteres
@@ -60,5 +59,5 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Elimina 'password2' antes de crear el usuario
         validated_data.pop('password2')
-        user = User.objects.create_user(**validated_data)
+        user = Usuario.objects.create_user(**validated_data)
         return user
