@@ -2,18 +2,21 @@
 from django.db import models
 from estudiantes.models import Estudiante
 from cursos.models import Curso
+from personas.models import Persona
 
 class Actividad(models.Model):
     titulo = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
     fecha = models.DateField()
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='actividades')
+    profesor = models.ForeignKey(Persona, on_delete=models.CASCADE, null=True, blank=True)
 
     class Meta:
         db_table = 'actividad'
 
     def __str__(self):
         return f"{self.titulo} - {self.curso}"
+    
 
 class ActividadEstudiante(models.Model):
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE)

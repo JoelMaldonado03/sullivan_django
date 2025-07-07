@@ -2,8 +2,9 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework import viewsets, status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
 
 from .models import CursoProfesor, Persona
 from .serializers import PersonaSerializer
@@ -15,6 +16,7 @@ class PersonaViewSet(viewsets.ModelViewSet):
     serializer_class = PersonaSerializer
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def obtener_cursos_por_profesor(request, id_profesor):
     try:
         cursos = Curso.objects.filter(cursoprofesor__persona_id=id_profesor)
@@ -24,6 +26,7 @@ def obtener_cursos_por_profesor(request, id_profesor):
         return Response({"detail": "Profesor no encontrado"}, status=404)
     
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def agregar_cursos_a_profesor(request, id_profesor):
     try:
         # Obtener al profesor por su ID
@@ -46,6 +49,7 @@ def agregar_cursos_a_profesor(request, id_profesor):
         return Response({"detail": "Curso no encontrado."}, status=status.HTTP_404_NOT_FOUND)
     
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def eliminar_curso_de_profesor(request, id_profesor, id_curso):
     try:
         # Obtener el curso asociado al profesor
