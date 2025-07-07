@@ -15,8 +15,9 @@ class PersonaViewSet(viewsets.ModelViewSet):
     queryset = Persona.objects.all()
     serializer_class = PersonaSerializer
 
+
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+# @permission_classes([IsAuthenticated])
 def obtener_cursos_por_profesor(request, id_profesor):
     try:
         cursos = Curso.objects.filter(cursoprofesor__persona_id=id_profesor)
@@ -24,6 +25,14 @@ def obtener_cursos_por_profesor(request, id_profesor):
         return Response(serializer.data)  
     except Persona.DoesNotExist:
         return Response({"detail": "Profesor no encontrado"}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mis_cursos(request):
+    profesor = request.user.persona
+    cursos = Curso.objects.filter(cursoprofesor__persona=profesor)
+    serializer = CursoSerializer(cursos, many=True)
+    return Response(serializer.data)
     
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

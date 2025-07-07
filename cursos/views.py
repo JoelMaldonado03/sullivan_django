@@ -16,7 +16,7 @@ class CursoViewSet(viewsets.ModelViewSet):
     serializer_class = CursoSerializer
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])    
 def estudiantes_del_curso(request, curso_id):
     estudiantes = Estudiante.objects.filter(curso_id=curso_id)
     serializer = EstudianteSerializer(estudiantes, many=True)

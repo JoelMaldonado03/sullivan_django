@@ -23,6 +23,7 @@
     #     return f"{self.nombre} {self.apellido} ({self.rol})"
 
 from django.db import models
+from cursos.models import Curso
 from usuarios.models import Usuario
 
 class Persona(models.Model):
@@ -34,6 +35,7 @@ class Persona(models.Model):
     numero_documento = models.CharField(max_length=20, unique=True)
     direccion = models.CharField(max_length=100)
     fecha_nacimiento = models.DateField()
+
     
     class Meta:
         db_table = 'persona'

@@ -8,12 +8,12 @@ router.register(r'', ActividadViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('mis-actividades/', ActividadesDelProfesorView.as_view(), name='actividades-del-profesor'),
-    path('actividades/estudiante/<int:estudiante_id>/', actividades_por_estudiante_y_profesor),
+    path('estudiante/<int:estudiante_id>/', actividades_por_estudiante_y_profesor),
     
     path('profesor/cursos/<int:curso_id>/asignar-actividad/', asignar_actividad_a_curso, name='asignar-actividad-a-curso'),
 
     #Actividades asignadas por el profesor  por cursos
-    path('actividades/profesor/cursos/',actividades_por_curso_y_profesor,name='actividades-por-todos-los-cursos'),
+    path('profesor/cursos/',actividades_por_curso_y_profesor,name='actividades-por-todos-los-cursos'),
     # Para un curso concreto
-    path('actividades/profesor/cursos/<int:curso_id>/', actividades_por_curso_y_profesor, name='actividades-por-curso')
+    path('profesor/cursos/<int:curso_id>/', actividades_por_curso_y_profesor, name='actividades-por-curso')
 ]
