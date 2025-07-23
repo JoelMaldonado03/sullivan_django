@@ -1,30 +1,33 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 from estudiantes.models import Estudiante
 from cursos.models import Curso
 from materias.models import Materia
-from personas.models import Persona
+from personas.models import Persona, CursoProfesorMateria
+
+User = get_user_model()
 
 class Clase(models.Model):
-    curso = models.ForeignKey(Curso, on_delete=models.CASCADE)
-    materia = models.ForeignKey(Materia, on_delete=models.CASCADE)
-    fecha = models.DateField(auto_now_add=True)
-    profesor = models.ForeignKey(Persona, on_delete=models.CASCADE)  # Rol: Profesor
-
+    fecha      = models.DateField()
+    duracion   = models.DurationField(null=True, blank=True)
+    dictada_por = models.ForeignKey(
+        CursoProfesorMateria,
+        on_delete=models.CASCADE,
+        related_name='clases',
+        null= True,
+        blank = True
+    )
     class Meta:
-            db_table = 'clase'
+        db_table = 'clase'
 
     def __str__(self):
-        return f"Clase de {self.materia} ({self.curso}) - {self.fecha}"
+        return f"{self.dictada_por} el {self.fecha}"
 
 
 class Asistencia(models.Model):
-    clase = models.ForeignKey(Clase, on_delete=models.CASCADE)
-    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE)
-    estado = models.CharField(max_length=12, choices=[("Presente", "Presente"), ("Ausente", "Ausente"), ("Justificado", "Justificado")])
-   
+    estado    = models.CharField(max_length=12)
+    clase     = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name='asistencias')
+    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name='asistencias', null=True, blank=True)
 
     class Meta:
         db_table = 'asistencia'
-
-    def __str__(self):
-        return f"{self.estudiante} - {self.estado} ({self.clase.fecha})"

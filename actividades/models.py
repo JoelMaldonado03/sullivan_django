@@ -2,21 +2,22 @@
 from django.db import models
 from estudiantes.models import Estudiante
 from cursos.models import Curso
-from personas.models import Persona
+from personas.models import CursoProfesorMateria
 
 class Actividad(models.Model):
-    titulo = models.CharField(max_length=100)
-    descripcion = models.TextField(blank=True)
-    fecha = models.DateField()
-    curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='actividades')
-    profesor = models.ForeignKey(Persona, on_delete=models.CASCADE, null=True, blank=True)
-
-    class Meta:
-        db_table = 'actividad'
-
-    def __str__(self):
-        return f"{self.titulo} - {self.curso}"
+    titulo     = models.CharField(max_length=100)
+    descripcion= models.TextField()
+    fecha      = models.DateField()
+    asignada_por = models.ForeignKey(
+        CursoProfesorMateria,
+        on_delete=models.CASCADE,
+        related_name='actividades',
+        null= True,
+        blank = True 
+    )
     
+    class Meta:
+        db_table ='actividad'
 
 class ActividadEstudiante(models.Model):
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE)

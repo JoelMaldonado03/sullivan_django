@@ -1,15 +1,16 @@
 from django.shortcuts import render
 
-# Create your views here.
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-from .models import CursoProfesor, Persona
+from .models import CursoProfesorMateria, Persona
 from .serializers import PersonaSerializer
 from cursos.models import Curso
 from cursos.serializers import CursoSerializer
+from materias.models import Materia
 
 class PersonaViewSet(viewsets.ModelViewSet):
     queryset = Persona.objects.all()
@@ -17,57 +18,86 @@ class PersonaViewSet(viewsets.ModelViewSet):
 
 
 @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-def obtener_cursos_por_profesor(request, id_profesor):
-    try:
-        cursos = Curso.objects.filter(cursoprofesor__persona_id=id_profesor)
-        serializer = CursoSerializer(cursos, many=True)
-        return Response(serializer.data)  
-    except Persona.DoesNotExist:
-        return Response({"detail": "Profesor no encontrado"}, status=404)
-
-@api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def mis_cursos(request):
-    profesor = request.user.persona
-    cursos = Curso.objects.filter(cursoprofesor__persona=profesor)
+def obtener_cursos_por_profesor(request, id_profesor):
+    """
+    Lista todos los cursos (sin duplicados) asociados al profesor indicado.
+    """
+    profesor = get_object_or_404(Persona, id=id_profesor)
+    # filtramos por la relación intermedia y usamos distinct() para evitar repetir cursos
+    cursos = Curso.objects.filter(
+        cursoprofesor__persona=profesor
+    ).distinct()
     serializer = CursoSerializer(cursos, many=True)
     return Response(serializer.data)
     
+
+
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def agregar_cursos_a_profesor(request, id_profesor):
-    try:
-        # Obtener al profesor por su ID
-        profesor = Persona.objects.get(id=id_profesor)
-        
-        # Obtener el ID del curso desde el body de la petición
-        curso_id = request.data.get('curso_id')
-        
-        # Obtener el curso
-        curso = Curso.objects.get(id=curso_id)
-        
-        # Crear la relación en la tabla intermedia
-        CursoProfesor.objects.create(persona=profesor, curso=curso)
-        
-        return Response({"detail": "Curso asociado al profesor exitosamente."}, status=status.HTTP_201_CREATED)
+    """
+    Asocia un curso y una materia al profesor.
+    Espera en el body JSON:
+    {
+      "curso_id": <int>,
+      "materia_id": <int>
+    }
+    """
+    profesor = get_object_or_404(Persona, id=id_profesor)
+    curso_id = request.data.get('curso_id')
+    materia_id = request.data.get('materia_id')
+
+    if not curso_id or not materia_id:
+        return Response(
+            {"detail": "Se requieren 'curso_id' y 'materia_id'."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    curso = get_object_or_404(Curso, id=curso_id)
+    materia = get_object_or_404(Materia, id=materia_id)
+
+    # get_or_create evita que se duplique la misma terna profesor–curso–materia
+    relacion, created = CursoProfesorMateria.objects.get_or_create(
+        persona=profesor,
+        curso=curso,
+        materia=materia
+    )
+
+    if created:
+        return Response(
+            {"detail": "Curso y materia asociados al profesor correctamente."},
+            status=status.HTTP_201_CREATED
+        )
+    else:
+        return Response(
+            {"detail": "La relación ya existía."},
+            status=status.HTTP_200_OK
+        )
     
-    except Persona.DoesNotExist:
-        return Response({"detail": "Profesor no encontrado."}, status=status.HTTP_404_NOT_FOUND)
-    except Curso.DoesNotExist:
-        return Response({"detail": "Curso no encontrado."}, status=status.HTTP_404_NOT_FOUND)
-    
+
+
+
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_curso_de_profesor(request, id_profesor, id_curso):
-    try:
-        # Obtener el curso asociado al profesor
-        curso_profesor = CursoProfesor.objects.get(persona_id=id_profesor, curso_id=id_curso)
-        
-        # Eliminar la relación
-        curso_profesor.delete()
-        
-        return Response({"detail": "Curso eliminado del profesor exitosamente."}, status=status.HTTP_204_NO_CONTENT)
-    
-    except CursoProfesor.DoesNotExist:
-        return Response({"detail": "La relación entre el profesor y el curso no existe."}, status=status.HTTP_404_NOT_FOUND)
+    """
+    Elimina **todas** las asociaciones curso–profesor (y materias) para ese curso.
+    """
+    profesor = get_object_or_404(Persona, id=id_profesor)
+    qs = CursoProfesorMateria.objects.filter(persona=profesor, curso_id=id_curso)
+    deleted_count, _ = qs.delete()
+
+    if deleted_count:
+        return Response(
+            {"detail": "Se eliminaron las asociaciones del curso correctamente."},
+            status=status.HTTP_204_NO_CONTENT
+        )
+    else:
+        return Response(
+            {"detail": "No se encontró esa asociación."},
+            status=status.HTTP_404_NOT_FOUND
+        )
