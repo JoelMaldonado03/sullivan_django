@@ -11,6 +11,7 @@ from .serializers import PersonaSerializer
 from cursos.models import Curso
 from cursos.serializers import CursoSerializer
 from materias.models import Materia
+from .serializers import CursoProfesorMateriaSerializer
 
 class PersonaViewSet(viewsets.ModelViewSet):
     queryset = Persona.objects.all()
@@ -101,3 +102,19 @@ def eliminar_curso_de_profesor(request, id_profesor, id_curso):
             {"detail": "No se encontró esa asociación."},
             status=status.HTTP_404_NOT_FOUND
         )
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def asignar_curso_materia_profesor(request):
+    serializer = CursoProfesorMateriaSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=201)
+    return Response(serializer.errors, status=400)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def listar_cursos_materias_por_profesor(request, persona_id):
+    asignaciones = CursoProfesorMateria.objects.filter(persona_id=persona_id)
+    serializer = CursoProfesorMateriaSerializer(asignaciones, many=True)
+    return Response(serializer.data)
