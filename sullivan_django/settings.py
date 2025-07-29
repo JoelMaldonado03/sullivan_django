@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'usuarios',
 ]
 
+# APPEND_SLASH = False
+
 # Configuración para Django REST Framework (Token Authentication)
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
