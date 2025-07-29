@@ -1,151 +1,45 @@
-from django.shortcuts import render
-
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, status
-from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.response import Response
+from rest_framework import status, viewsets
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
 
 from .models import CursoProfesorMateria, Persona
-from .serializers import PersonaSerializer
+from .serializers import PersonaSerializer, CursoProfesorMateriaSerializer
 from cursos.models import Curso
 from cursos.serializers import CursoSerializer
 from materias.models import Materia
-from .serializers import CursoProfesorMateriaSerializer
+
 
 class PersonaViewSet(viewsets.ModelViewSet):
     queryset = Persona.objects.all()
     serializer_class = PersonaSerializer
 
-    @action(detail=False, methods=['post'], url_path='asignar-curso-materia',
-            permission_classes=[IsAuthenticated])
-    def asignar_curso_materia(self, request):
-        data = {
-            'curso':   request.data.get('curso_id'),
-            'persona': request.data.get('persona_id'),
-            'materia': request.data.get('materia_id'),
-        }
-        serializer = CursoProfesorMateriaSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def obtener_cursos_por_profesor(request, id_profesor):
+def listar_cursos_profesor(request, persona_id):
     """
-    Lista todos los cursos (sin duplicados) asociados al profesor indicado.
+    Lista todos los cursos y materias asignadas a un profesor específico.
+    GET /personas/{persona_id}/cursos-materias/
     """
-    profesor = get_object_or_404(Persona, id=id_profesor)
-    # filtramos por la relación intermedia y usamos distinct() para evitar repetir cursos
-    cursos = Curso.objects.filter(
-        cursoprofesor__persona=profesor
-    ).distinct()
-    serializer = CursoSerializer(cursos, many=True)
+    profesor = get_object_or_404(Persona, id=persona_id)
+    asignaciones = CursoProfesorMateria.objects.filter(persona=profesor)
+    serializer = CursoProfesorMateriaSerializer(asignaciones, many=True)
     return Response(serializer.data)
-    
-
-
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def agregar_cursos_a_profesor(request, id_profesor):
+@permission_classes([IsAuthenticated,])
+def asignar_curso_materia_profesor(request, persona_id, curso_id, materia_id):
     """
-    Asocia un curso y una materia al profesor.
-    Espera en el body JSON:
-    {
-      "curso_id": <int>,
-      "materia_id": <int>
-    }
+    Asigna curso y materia a un profesor.
+    POST /personas/{persona_id}/cursos/{curso_id}/materias/{materia_id}/
     """
-    profesor = get_object_or_404(Persona, id=id_profesor)
-    curso_id = request.data.get('curso_id')
-    materia_id = request.data.get('materia_id')
-
-    if not curso_id or not materia_id:
-        return Response(
-            {"detail": "Se requieren 'curso_id' y 'materia_id'."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
+    persona = get_object_or_404(Persona, id=persona_id)
     curso = get_object_or_404(Curso, id=curso_id)
     materia = get_object_or_404(Materia, id=materia_id)
 
-    # get_or_create evita que se duplique la misma terna profesor–curso–materia
-    relacion, created = CursoProfesorMateria.objects.get_or_create(
-        persona=profesor,
-        curso=curso,
-        materia=materia
-    )
-
-    if created:
-        return Response(
-            {"detail": "Curso y materia asociados al profesor correctamente."},
-            status=status.HTTP_201_CREATED
-        )
-    else:
-        return Response(
-            {"detail": "La relación ya existía."},
-            status=status.HTTP_200_OK
-        )
-    
-
-
-
-
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def eliminar_curso_de_profesor(request, id_profesor, id_curso):
-    """
-    Elimina **todas** las asociaciones curso–profesor (y materias) para ese curso.
-    """
-    profesor = get_object_or_404(Persona, id=id_profesor)
-    qs = CursoProfesorMateria.objects.filter(persona=profesor, curso_id=id_curso)
-    deleted_count, _ = qs.delete()
-
-    if deleted_count:
-        return Response(
-            {"detail": "Se eliminaron las asociaciones del curso correctamente."},
-            status=status.HTTP_204_NO_CONTENT
-        )
-    else:
-        return Response(
-            {"detail": "No se encontró esa asociación."},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-
-
-
-
-
-    
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def asignar_curso_materia_profesor(request, persona_id, curso_id, materia_id):
-    """
-    Asigna la materia al curso para un profesor dado.
-    SOLO ADMINS pueden usarlo.
-
-    Ruta:
-      POST /personas/{persona_id}/cursos/{curso_id}/materias/{materia_id}/asignar/
-
-    Respuesta 201:
-    {
-      "id": 17,
-      "persona": 5,
-      "curso": 2,
-      "materia": 3
-    }
-    """
-    # 1) validamos existencia
-    persona = get_object_or_404(Persona, id=persona_id)
-    curso   = get_object_or_404(Curso,   id=curso_id)
-    materia = get_object_or_404(Materia, id=materia_id)
-
-    # 2) creamos o devolvemos el existente
     obj, created = CursoProfesorMateria.objects.get_or_create(
         persona=persona,
         curso=curso,
@@ -159,12 +53,27 @@ def asignar_curso_materia_profesor(request, persona_id, curso_id, materia_id):
     )
 
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def eliminar_curso_profesor(request, persona_id, curso_id, materia_id):
+    """
+    Elimina la asignación curso-materia de un profesor.
+    DELETE /personas/{persona_id}/cursos/{curso_id}/materias/{materia_id}/
+    """
+    asignacion = CursoProfesorMateria.objects.filter(
+        persona_id=persona_id,
+        curso_id=curso_id,
+        materia_id=materia_id
+    ).first()
 
+    if asignacion:
+        asignacion.delete()
+        return Response(
+            {"detail": "Asignación eliminada correctamente."},
+            status=status.HTTP_204_NO_CONTENT
+        )
 
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def listar_cursos_materias_por_profesor(request, persona_id):
-    asignaciones = CursoProfesorMateria.objects.filter(persona_id=persona_id)
-    serializer = CursoProfesorMateriaSerializer(asignaciones, many=True)
-    return Response(serializer.data)
+    return Response(
+        {"detail": "Asignación no encontrada."},
+        status=status.HTTP_404_NOT_FOUND
+    )
