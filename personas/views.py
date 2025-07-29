@@ -2,9 +2,9 @@ from django.shortcuts import render
 
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 from .models import CursoProfesorMateria, Persona
 from .serializers import PersonaSerializer
@@ -16,6 +16,19 @@ from .serializers import CursoProfesorMateriaSerializer
 class PersonaViewSet(viewsets.ModelViewSet):
     queryset = Persona.objects.all()
     serializer_class = PersonaSerializer
+
+    @action(detail=False, methods=['post'], url_path='asignar-curso-materia',
+            permission_classes=[IsAuthenticated])
+    def asignar_curso_materia(self, request):
+        data = {
+            'curso':   request.data.get('curso_id'),
+            'persona': request.data.get('persona_id'),
+            'materia': request.data.get('materia_id'),
+        }
+        serializer = CursoProfesorMateriaSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])
@@ -103,14 +116,51 @@ def eliminar_curso_de_profesor(request, id_profesor, id_curso):
             status=status.HTTP_404_NOT_FOUND
         )
     
+
+
+
+
+
+    
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def asignar_curso_materia_profesor(request):
-    serializer = CursoProfesorMateriaSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=201)
-    return Response(serializer.errors, status=400)
+def asignar_curso_materia_profesor(request, persona_id, curso_id, materia_id):
+    """
+    Asigna la materia al curso para un profesor dado.
+    SOLO ADMINS pueden usarlo.
+
+    Ruta:
+      POST /personas/{persona_id}/cursos/{curso_id}/materias/{materia_id}/asignar/
+
+    Respuesta 201:
+    {
+      "id": 17,
+      "persona": 5,
+      "curso": 2,
+      "materia": 3
+    }
+    """
+    # 1) validamos existencia
+    persona = get_object_or_404(Persona, id=persona_id)
+    curso   = get_object_or_404(Curso,   id=curso_id)
+    materia = get_object_or_404(Materia, id=materia_id)
+
+    # 2) creamos o devolvemos el existente
+    obj, created = CursoProfesorMateria.objects.get_or_create(
+        persona=persona,
+        curso=curso,
+        materia=materia
+    )
+
+    serializer = CursoProfesorMateriaSerializer(obj)
+    return Response(
+        serializer.data,
+        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    )
+
+
+
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
