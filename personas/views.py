@@ -29,6 +29,7 @@ def listar_cursos_profesor(request, persona_id):
     return Response(serializer.data)
 
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated,])
 def asignar_curso_materia_profesor(request, persona_id, curso_id, materia_id):
@@ -51,6 +52,7 @@ def asignar_curso_materia_profesor(request, persona_id, curso_id, materia_id):
         serializer.data,
         status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
     )
+
 
 
 @api_view(['DELETE'])

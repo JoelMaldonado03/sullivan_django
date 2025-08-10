@@ -17,6 +17,7 @@ class Clase(models.Model):
         null= True,
         blank = True
     )
+    asistencia_tomada = models.BooleanField(default=False)
     class Meta:
         db_table = 'clase'
 
@@ -25,9 +26,12 @@ class Clase(models.Model):
 
 
 class Asistencia(models.Model):
-    estado    = models.CharField(max_length=12)
+    ESTADOS = (('Presente', 'Presente'), ('Ausente', 'Ausente'))
+
+    estado = models.CharField(max_length=8, choices=ESTADOS)
     clase     = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name='asistencias')
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name='asistencias', null=True, blank=True)
 
     class Meta:
         db_table = 'asistencia'
+        unique_together = (('clase', 'estudiante'),)  # NO doble asistencia por clase
