@@ -8,6 +8,7 @@ class Actividad(models.Model):
     titulo     = models.CharField(max_length=100)
     descripcion= models.TextField()
     fecha      = models.DateField()
+    fecha_entrega= models.DateField(null=True, blank=True)
     asignada_por = models.ForeignKey(
         CursoProfesorMateria,
         on_delete=models.CASCADE,
@@ -22,8 +23,8 @@ class Actividad(models.Model):
 class ActividadEstudiante(models.Model):
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE)
     actividad = models.ForeignKey(Actividad, on_delete=models.CASCADE)
-    entrega = models.BooleanField(default=False)
-    calificacion = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    entregado_en= models.DateTimeField(null=True, blank=True)
+    calificacion = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
 
     class Meta:
         unique_together = ('estudiante', 'actividad')  # Evita duplicados
