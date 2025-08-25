@@ -8,6 +8,7 @@ from estudiantes.models import Estudiante
 from estudiantes.serializers import EstudianteSerializer
 from cursos.models import Curso
 from cursos.serializers import CursoSerializer
+from personas.models import CursoProfesorMateria
 from .models import Clase, Asistencia
 from .serializers import (
     ClaseSerializer, 
@@ -149,3 +150,65 @@ def marcar_asistencia_bulk(request, clase_id):
         clase.save(update_fields=['asistencia_tomada'])
 
     return Response({'creados': creados, 'actualizados': actualizados, 'asistencia_tomada': clase.asistencia_tomada})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def resumen_asistencia_por_curso(request, cpm_id: int):
+    """
+    Retorna el resumen de asistencia para TODAS las clases dictadas por
+    el registro CursoProfesorMateria (cpm_id).
+
+    Respuesta:
+    {
+      "cpm_id": 6,
+      "curso": { "id": 1, "nombre_curso": "Primero A" },
+      "materia": { "id": 9, "nombre": "Educación Física" },
+      "clases": [ {"id":7,"fecha":"2025-08-03"}, {"id":11,"fecha":"2025-08-10"} ],
+      "estudiantes":[
+        { "id":21, "nombre":"Ana", "apellido":"López",
+          "asistencias": { "7":"Presente", "11":"Ausente" } },
+        ...
+      ]
+    }
+    """
+    cpm = get_object_or_404(CursoProfesorMateria, pk=cpm_id)
+
+    # Todas las clases del curso/materia
+    clases_qs = Clase.objects.filter(dictada_por=cpm).order_by('fecha')
+    clases = list(clases_qs.values('id', 'fecha'))
+
+    # Estudiantes del curso
+    est_qs = Estudiante.objects.filter(curso=cpm.curso).order_by('apellido', 'nombre')
+    estudiantes = list(est_qs.values('id', 'nombre', 'apellido'))
+
+    # Asistencias registradas en cualquiera de esas clases para esos estudiantes
+    asis_qs = Asistencia.objects.filter(
+        clase__in=clases_qs,
+        estudiante__in=est_qs
+    ).values('clase_id', 'estudiante_id', 'estado')
+
+    # Mapa: (estudiante_id -> { clase_id -> estado })
+    mapa = {}
+    for a in asis_qs:
+        est_id = a['estudiante_id']
+        cla_id = a['clase_id']
+        if est_id not in mapa:
+            mapa[est_id] = {}
+        mapa[est_id][str(cla_id)] = a['estado']  # string keys por simplicidad
+
+    estudiantes_payload = []
+    for e in estudiantes:
+        estudiantes_payload.append({
+            'id': e['id'],
+            'nombre': e['nombre'],
+            'apellido': e['apellido'],
+            'asistencias': mapa.get(e['id'], {})  # dict { clase_id: "Presente"/"Ausente" }
+        })
+
+    return Response({
+        'cpm_id': cpm.id,
+        'curso':   {'id': cpm.curso.id, 'nombre_curso': cpm.curso.nombre_curso},
+        'materia': {'id': cpm.materia.id, 'nombre': cpm.materia.nombre},
+        'clases': clases,
+        'estudiantes': estudiantes_payload,
+    })
