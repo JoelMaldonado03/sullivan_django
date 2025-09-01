@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -79,3 +80,21 @@ def eliminar_curso_profesor(request, persona_id, curso_id, materia_id):
         {"detail": "Asignación no encontrada."},
         status=status.HTTP_404_NOT_FOUND
     )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def buscar_personas(request):
+    """
+    GET /personas/buscar?q=texto
+    Si q son dígitos -> filtra por numero_documento (icontains)
+    Si q tiene texto  -> filtra por nombre/apellido (icontains)
+    """
+    q = (request.GET.get('q') or '').strip()
+    qs = Persona.objects.all()
+    if q:
+        if q.isdigit():
+            qs = qs.filter(numero_documento__icontains=q)
+        else:
+            qs = qs.filter(Q(nombre__icontains=q) | Q(apellido__icontains=q))
+    qs = qs.order_by('apellido','nombre')[:20]
+    return Response(PersonaSerializer(qs, many=True).data)

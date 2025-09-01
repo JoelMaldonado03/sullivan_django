@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PersonaViewSet, listar_cursos_profesor, asignar_curso_materia_profesor, eliminar_curso_profesor
+from .views import PersonaViewSet, listar_cursos_profesor, asignar_curso_materia_profesor, eliminar_curso_profesor, buscar_personas
 
 router = DefaultRouter()
 router.register(r'', PersonaViewSet)
@@ -9,5 +9,6 @@ urlpatterns = [
     path('<int:persona_id>/cursos-materias/', listar_cursos_profesor, name='listar-cursos-profesor'),
     path('<int:persona_id>/cursos/<int:curso_id>/materias/<int:materia_id>/', asignar_curso_materia_profesor, name='asignar-curso-materia-profesor'),
     path('<int:persona_id>/cursos/<int:curso_id>/materias/<int:materia_id>/eliminar/', eliminar_curso_profesor, name='eliminar-curso-profesor'),
+    path('buscar/', buscar_personas, name='buscar-personas'),
     path('', include(router.urls)),
 ]
