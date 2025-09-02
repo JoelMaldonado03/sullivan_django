@@ -74,3 +74,70 @@ def fechas_con_asistencia(request, cpm_id):
               .values_list('fecha', flat=True)
               .distinct())
     return Response({'cpm_id': cpm_id, 'fechas': list(fechas)})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def resumen_asistencia_cpm(request, cpm_id: int):
+    cpm = get_object_or_404(CursoProfesorMateria.objects.select_related('curso','materia'), id=cpm_id)
+
+    # Fechas con registros (orden ascendente)
+    fechas_qs = (Asistencia.objects
+                 .filter(cpm=cpm)
+                 .order_by('fecha')
+                 .values_list('fecha', flat=True)
+                 .distinct())
+    fechas = [f.isoformat() for f in fechas_qs]
+
+    # Estudiantes del curso de ese CPM
+    estudiantes_qs = Estudiante.objects.filter(curso_id=cpm.curso_id).values('id','nombre','apellido')
+
+    # Mapa est-> { 'YYYY-MM-DD': 'Presente'|'Ausente' }
+    asistencias = {}
+    for a in Asistencia.objects.filter(cpm=cpm).only('estudiante_id','fecha','estado'):
+        asistencias.setdefault(a.estudiante_id, {})[a.fecha.isoformat()] = a.estado
+
+    estudiantes_payload = []
+    for e in estudiantes_qs:
+        estudiantes_payload.append({
+            'id': e['id'],
+            'nombre': e['nombre'],
+            'apellido': e['apellido'],
+            'asistencias': asistencias.get(e['id'], {})
+        })
+
+    return Response({
+        'curso':   {'id': cpm.curso_id,   'nombre_curso': cpm.curso.nombre_curso},
+        'materia': {'id': cpm.materia_id, 'nombre': cpm.materia.nombre},
+        'fechas': fechas,
+        'estudiantes': estudiantes_payload
+    })
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upsert_asistencia_cpm(request, cpm_id: int):
+    """
+    Body:
+    {
+      "fecha": "2025-08-21",
+      "estudiante_id": 12,
+      "estado": "Presente" | "Ausente"
+    }
+    """
+    cpm = get_object_or_404(CursoProfesorMateria, id=cpm_id)
+    fecha = request.data.get('fecha')
+    estudiante_id = request.data.get('estudiante_id')
+    estado = request.data.get('estado')
+
+    if estado not in ('Presente', 'Ausente'):
+        return Response({'detail': 'Estado inválido'}, status=400)
+    if not (fecha and estudiante_id):
+        return Response({'detail': 'fecha y estudiante_id son requeridos'}, status=400)
+
+    # (opcional) verifica que el estudiante pertenezca al curso del CPM
+    get_object_or_404(Estudiante, id=estudiante_id, curso_id=cpm.curso_id)
+
+    obj, created = Asistencia.objects.update_or_create(
+        cpm=cpm, estudiante_id=estudiante_id, fecha=fecha,
+        defaults={'estado': estado}
+    )
+    return Response({'id': obj.id, 'created': created}, status=status.HTTP_200_OK)
