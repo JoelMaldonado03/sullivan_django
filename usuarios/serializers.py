@@ -61,3 +61,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         validated_data.pop('password2')
         user = Usuario.objects.create_user(**validated_data)
         return user
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email_or_username = serializers.CharField()
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8)

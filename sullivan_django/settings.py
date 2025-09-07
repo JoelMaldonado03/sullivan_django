@@ -54,6 +54,7 @@ INSTALLED_APPS = [
 ]
 
 # APPEND_SLASH = False
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Configuración para Django REST Framework (Token Authentication)
 REST_FRAMEWORK = {
