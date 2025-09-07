@@ -37,11 +37,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # 'django_filters',
     'corsheaders',  # CORS headers
     'drf_yasg',     # Swagger documentation
     'rest_framework',  # Django REST Framework
     'rest_framework.authtoken',  # Token Authentication
-    'estudiantes', 
+    'estudiantes',
+    'asignaciones',
     'personas',
     'cursos',
     'materias',

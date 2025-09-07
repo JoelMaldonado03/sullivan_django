@@ -1,12 +1,13 @@
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 
 from .models import CursoProfesorMateria, Persona
-from .serializers import PersonaSerializer, CursoProfesorMateriaSerializer
+from .serializers import PersonaSerializer
+from asignaciones.serializers import CursoProfesorMateriaSerializer
 from cursos.models import Curso
 from cursos.serializers import CursoSerializer
 from materias.models import Materia
@@ -15,6 +16,29 @@ from materias.models import Materia
 class PersonaViewSet(viewsets.ModelViewSet):
     queryset = Persona.objects.all()
     serializer_class = PersonaSerializer
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def persona_me(request):
+    """
+    GET  -> retorna la Persona del usuario
+    PATCH -> actualiza parcialmente la Persona (y Usuario anidado si viene)
+    """
+    try:
+        persona = request.user.persona
+    except Persona.DoesNotExist:
+        return Response({"detail": "Persona no encontrada para este usuario."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(PersonaSerializer(persona).data)
+
+    # PATCH
+    serializer = PersonaSerializer(persona, data=request.data, partial=True)
+    if serializer.is_valid():
+        persona_actualizada = serializer.save()
+        return Response(PersonaSerializer(persona_actualizada).data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @api_view(['GET'])
@@ -98,3 +122,4 @@ def buscar_personas(request):
             qs = qs.filter(Q(nombre__icontains=q) | Q(apellido__icontains=q))
     qs = qs.order_by('apellido','nombre')[:20]
     return Response(PersonaSerializer(qs, many=True).data)
+

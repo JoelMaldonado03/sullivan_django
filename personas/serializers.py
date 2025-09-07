@@ -2,9 +2,19 @@ from rest_framework import serializers
 from .models import Persona, CursoProfesorMateria
 from cursos.models import Curso
 from materias.models import Materia
+from usuarios.models import Usuario
+
+class UsuarioInlineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ('id', 'username', 'email', 'rol', 'password')
+        extra_kwargs = {
+            'password': {'write_only': True, 'required': False},
+            'username': {'required': False},  # lo igualaremos a email si no viene
+        }
 
 class PersonaSerializer(serializers.ModelSerializer):
-    rol = serializers.CharField(source='usuario.rol', read_only=True)
+    usuario = UsuarioInlineSerializer()
 
     class Meta:
         model = Persona
@@ -17,29 +27,40 @@ class PersonaSerializer(serializers.ModelSerializer):
             'numero_documento',
             'direccion',
             'fecha_nacimiento',
-            'rol'  # <-- este es el campo extra que viene del modelo Usuario
+            'usuario'  
         ]
+    def create(self, validated_data):
+        user_data = validated_data.pop('usuario')
 
-class PersonaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Persona
-        fields = '__all__'
+        email = user_data.get('email')
+        username = user_data.get('username') or email
+        rol = user_data.get('rol')
+        password = validated_data.get('numero_documento')
 
-class CursoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Curso
-        fields = ['id', 'nombre_curso']
+        user = Usuario(username=username, email=email, rol=rol)
+        if password:
+            user.set_password(password)
+        else:
+            # si no te mandan password, puedes dejarlo inutilizable o generar uno
+            user.set_unusable_password()
+            # o: user.set_password(Usuario.objects.make_random_password())
+        user.save()
 
-class MateriaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Materia
-        fields = ['id', 'nombre']
+        persona = Persona.objects.create(usuario=user, **validated_data)
+        return persona
 
-class CursoProfesorMateriaSerializer(serializers.ModelSerializer):
-    curso = CursoSerializer(read_only=True)
-    materia = MateriaSerializer(read_only=True)
-    persona = PersonaSerializer(read_only=True)
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('usuario', None)
+        if user_data:
+            user = instance.usuario
+            user.email = user_data.get('email', user.email)
+            user.username = user_data.get('username', user.username) or user.email
+            if 'rol' in user_data:
+                user.rol = user_data['rol']
+            if 'password' in user_data and user_data['password']:
+                user.set_password(user_data['password'])
+            user.save()
 
-    class Meta:
-        model = CursoProfesorMateria
-        fields = '__all__'
+        return super().update(instance, validated_data)
+
+
