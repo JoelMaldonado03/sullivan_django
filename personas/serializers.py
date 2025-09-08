@@ -64,3 +64,5 @@ class PersonaSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+class CargaEstudiantesSerializer(serializers.Serializer):
+    file = serializers.FileField()
