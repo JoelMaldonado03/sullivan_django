@@ -18,10 +18,8 @@ def asistencia_por_cpm_y_fecha(request, cpm_id):
     cpm = get_object_or_404(CursoProfesorMateria, id=cpm_id)
     fecha = request.GET.get('fecha') or date.today().isoformat()
 
-    # estudiantes del curso
-    ests = Estudiante.objects.filter(curso_id=cpm.curso_id).values('id','nombre','apellido')
+    ests = Estudiante.objects.filter(curso_id=cpm.curso_id).values('id', 'nombre', 'apellido')
 
-    # mapa asistencias del día
     asist = {
         (a.estudiante_id): a.estado
         for a in Asistencia.objects.filter(cpm=cpm, fecha=fecha)
@@ -48,15 +46,17 @@ def asistencia_por_cpm_y_fecha(request, cpm_id):
 def upsert_asistencia(request, cpm_id):
     """
     Crea/actualiza la asistencia de UN estudiante.
-    body: { "fecha":"YYYY-MM-DD", "estudiante_id": 12, "estado": "Presente|Ausente" }
+    body: { "fecha":"YYYY-MM-DD", "estudiante_id": 12, "estado": "Presente|Tarde|Ausente" }
     """
     cpm = get_object_or_404(CursoProfesorMateria, id=cpm_id)
     fecha = request.data.get('fecha')
     estudiante_id = request.data.get('estudiante_id')
     estado = request.data.get('estado')
 
-    if estado not in ('Presente', 'Ausente'):
-        return Response({'detail':'Estado inválido'}, status=400)
+    if estado not in ('Presente', 'Tarde', 'Ausente'):
+        return Response({'detail': 'Estado inválido'}, status=400)
+    if not (fecha and estudiante_id):
+        return Response({'detail': 'fecha y estudiante_id son requeridos'}, status=400)
 
     obj, _created = Asistencia.objects.update_or_create(
         cpm=cpm, fecha=fecha, estudiante_id=estudiante_id,
@@ -78,9 +78,8 @@ def fechas_con_asistencia(request, cpm_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def resumen_asistencia_cpm(request, cpm_id: int):
-    cpm = get_object_or_404(CursoProfesorMateria.objects.select_related('curso','materia'), id=cpm_id)
+    cpm = get_object_or_404(CursoProfesorMateria.objects.select_related('curso', 'materia'), id=cpm_id)
 
-    # Fechas con registros (orden ascendente)
     fechas_qs = (Asistencia.objects
                  .filter(cpm=cpm)
                  .order_by('fecha')
@@ -88,12 +87,10 @@ def resumen_asistencia_cpm(request, cpm_id: int):
                  .distinct())
     fechas = [f.isoformat() for f in fechas_qs]
 
-    # Estudiantes del curso de ese CPM
-    estudiantes_qs = Estudiante.objects.filter(curso_id=cpm.curso_id).values('id','nombre','apellido')
+    estudiantes_qs = Estudiante.objects.filter(curso_id=cpm.curso_id).values('id', 'nombre', 'apellido')
 
-    # Mapa est-> { 'YYYY-MM-DD': 'Presente'|'Ausente' }
     asistencias = {}
-    for a in Asistencia.objects.filter(cpm=cpm).only('estudiante_id','fecha','estado'):
+    for a in Asistencia.objects.filter(cpm=cpm).only('estudiante_id', 'fecha', 'estado'):
         asistencias.setdefault(a.estudiante_id, {})[a.fecha.isoformat()] = a.estado
 
     estudiantes_payload = []
@@ -120,7 +117,7 @@ def upsert_asistencia_cpm(request, cpm_id: int):
     {
       "fecha": "2025-08-21",
       "estudiante_id": 12,
-      "estado": "Presente" | "Ausente"
+      "estado": "Presente" | "Tarde" | "Ausente"
     }
     """
     cpm = get_object_or_404(CursoProfesorMateria, id=cpm_id)
@@ -128,7 +125,7 @@ def upsert_asistencia_cpm(request, cpm_id: int):
     estudiante_id = request.data.get('estudiante_id')
     estado = request.data.get('estado')
 
-    if estado not in ('Presente', 'Ausente'):
+    if estado not in ('Presente', 'Tarde', 'Ausente'):
         return Response({'detail': 'Estado inválido'}, status=400)
     if not (fecha and estudiante_id):
         return Response({'detail': 'fecha y estudiante_id son requeridos'}, status=400)
