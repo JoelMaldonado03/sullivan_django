@@ -1,17 +1,27 @@
-# Entorno virtual
-venv/
-
-# Archivos Python compilados
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
+*.pyc
 
-# Archivos de entorno
+# Entornos
+venv/
 .env
+*.env
 
-# Archivos temporales
+# Django / datos locales
+db.sqlite3
+/media/
+staticfiles/
 *.log
 
-# Config de editores
+# Node/Frontend (si tienes React)
+node_modules/
+dist/
+build/
+*.local
+
+# IDEs
 .vscode/
 .idea/
+.DS_Store
