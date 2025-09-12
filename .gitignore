@@ -1,1 +1,17 @@
-venv/\n__pycache__/\ndb.sqlite3\n*.pyc\n.env\n*.log\n*.sqlite3
+# Entorno virtual
+venv/
+
+# Archivos Python compilados
+__pycache__/
+*.pyc
+*.pyo
+
+# Archivos de entorno
+.env
+
+# Archivos temporales
+*.log
+
+# Config de editores
+.vscode/
+.idea/
