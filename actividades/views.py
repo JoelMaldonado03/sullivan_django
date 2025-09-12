@@ -1,9 +1,10 @@
-# actividades/views.py
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
+from django.utils.timezone import now
 
 from .models import Actividad, ActividadEstudiante
 from .serializers import (
@@ -12,15 +13,14 @@ from .serializers import (
     ActividadDetalleSerializer,
     ActividadEntregaSerializer,
 )
-from personas.models import CursoProfesorMateria
 from estudiantes.models import Estudiante
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def actividades_por_curso(request, curso_id):
     """
-    ?todas=1 para ver actividades de TODOS los profes del curso.
-    Por defecto (todas=0), solo las del profe autenticado.
+    ?todas=1 -> todas las actividades del curso (todos los profes)
+    ?todas=0 (default) -> solo las del profe autenticado
     """
     todas = request.query_params.get('todas') == '1'
     qs = Actividad.objects.filter(asignada_por__curso_id=curso_id)
@@ -30,7 +30,6 @@ def actividades_por_curso(request, curso_id):
             qs = qs.filter(asignada_por__persona=profesor)
         except Exception:
             return Response({'detail': 'No asociado a persona.'}, status=400)
-
     data = ActividadSerializer(qs.order_by('-fecha','-id'), many=True).data
     return Response(data)
 
@@ -39,46 +38,62 @@ def actividades_por_curso(request, curso_id):
 def crear_actividad_en_curso(request, curso_id):
     """
     Body: { titulo, descripcion, fecha, fecha_entrega?, cpm_id }
-    Crea la actividad y genera ActividadEstudiante para TODOS los
-    estudiantes del curso.
+    Crea actividad + filas en actividad_estudiante para TODOS los estudiantes del curso.
     """
     ser = ActividadCreateSerializer(data=request.data)
-    if not ser.is_valid():
-        return Response(ser.errors, status=400)
+    ser.is_valid(raise_exception=True)
     actividad = ser.save()
 
-    # Validación de correspondencia curso <-> cpm
+    # Valida correspondencia curso <-> cpm
     if actividad.asignada_por.curso_id != curso_id:
         actividad.delete()
         return Response({'detail':'cpm_id no corresponde al curso.'}, status=400)
 
-    # Crear las entregas por estudiante del curso
+    # Genera relación para cada estudiante
     estudiantes = Estudiante.objects.filter(curso_id=curso_id)
-    asignaciones = [
-        ActividadEstudiante(actividad=actividad, estudiante=e)
-        for e in estudiantes
-    ]
-    ActividadEstudiante.objects.bulk_create(asignaciones)
+    ActividadEstudiante.objects.bulk_create([
+        ActividadEstudiante(actividad=actividad, estudiante=e) for e in estudiantes
+    ])
 
-    return Response(ActividadDetalleSerializer(actividad).data, status=201)
+    return Response(ActividadDetalleSerializer(actividad, context={'request': request}).data, status=201)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def detalle_actividad(request, actividad_id):
     actividad = get_object_or_404(Actividad, pk=actividad_id)
-    data = ActividadDetalleSerializer(actividad).data
+    data = ActividadDetalleSerializer(actividad, context={'request': request}).data
     return Response(data)
+
+# *** NUEVO: lee DIRECTO la tabla relación actividad_estudiante ***
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def entregas_por_actividad(request, actividad_id):
+    """
+    GET /api/actividades/actividad/<actividad_id>/entregas/?estado=entregadas|pendientes|todas
+    - entregadas: entregado_en IS NOT NULL
+    - pendientes: entregado_en IS NULL
+    - todas: sin filtro
+    """
+    estado = (request.query_params.get('estado') or 'entregadas').lower()
+    qs = (ActividadEstudiante.objects
+          .select_related('estudiante')
+          .filter(actividad_id=actividad_id))
+    if estado == 'entregadas':
+        qs = qs.exclude(entregado_en__isnull=True)
+    elif estado == 'pendientes':
+        qs = qs.filter(entregado_en__isnull=True)
+
+    ser = ActividadEntregaSerializer(qs.order_by('id'), many=True, context={'request': request})
+    return Response(ser.data)
 
 @api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def actividad_update_delete(request, actividad_id):
     actividad = get_object_or_404(Actividad, pk=actividad_id)
-
     if request.method == 'DELETE':
         actividad.delete()
         return Response(status=204)
 
-    # PATCH
     partial = {}
     for f in ['titulo','descripcion','fecha','fecha_entrega']:
         if f in request.data:
@@ -94,18 +109,42 @@ def actividad_update_delete(request, actividad_id):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def actualizar_entrega(request, actividad_estudiante_id):
+    """
+    PATCH JSON:
+      { "entregado_en":"2025-09-13T10:30:00Z", "calificacion": 4.5 }
+    """
     ae = get_object_or_404(ActividadEstudiante, pk=actividad_estudiante_id)
     data = {}
-
     if 'entregado_en' in request.data:
         data['entregado_en'] = request.data['entregado_en']
     if 'calificacion' in request.data:
         data['calificacion'] = request.data['calificacion']
-
     if not data:
         return Response({'detail':'Nada que actualizar.'}, status=400)
 
-    ser = ActividadEntregaSerializer(ae, data=data, partial=True)
+    ser = ActividadEntregaSerializer(ae, data=data, partial=True, context={'request': request})
     ser.is_valid(raise_exception=True)
     ser.save()
     return Response(ser.data)
+
+# *** NUEVO: subir/actualizar archivo del entregable (multipart/form-data) ***
+@api_view(['POST','PATCH'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def subir_entregable(request, actividad_estudiante_id):
+    """
+    form-data:
+      entregable: <archivo>
+    Al subir, si no hay 'entregado_en', lo marca con now().
+    """
+    ae = get_object_or_404(ActividadEstudiante, pk=actividad_estudiante_id)
+    archivo = request.FILES.get('entregable')
+    if not archivo:
+        return Response({'detail': "Falta archivo 'entregable'."}, status=400)
+
+    ae.entregable = archivo
+    if ae.entregado_en is None:
+        ae.entregado_en = now()
+    ae.save()
+
+    return Response(ActividadEntregaSerializer(ae, context={'request': request}).data, status=200)

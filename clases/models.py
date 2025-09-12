@@ -4,7 +4,7 @@ from estudiantes.models import Estudiante
 from personas.models import CursoProfesorMateria
 
 class Asistencia(models.Model):
-    ESTADOS = (('Presente', 'Presente'), ('Ausente', 'Ausente'))
+    ESTADOS = (('Presente', 'Presente'), ('Tarde', 'Tarde'), ('Ausente', 'Ausente') )
 
     # NUEVO: relación directa
     cpm       = models.ForeignKey(

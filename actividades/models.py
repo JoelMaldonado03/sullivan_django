@@ -9,6 +9,7 @@ class Actividad(models.Model):
     descripcion= models.TextField()
     fecha      = models.DateField()
     fecha_entrega= models.DateField(null=True, blank=True)
+    
     asignada_por = models.ForeignKey(
         CursoProfesorMateria,
         on_delete=models.CASCADE,
@@ -24,6 +25,7 @@ class ActividadEstudiante(models.Model):
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE)
     actividad = models.ForeignKey(Actividad, on_delete=models.CASCADE)
     entregado_en= models.DateTimeField(null=True, blank=True)
+    entregable = models.FileField(upload_to='entregables/', null=True, blank=True)
     calificacion = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
 
     class Meta:
