@@ -1,1 +1,27 @@
-venv/\n__pycache__/\ndb.sqlite3\n*.pyc\n.env\n*.log\n*.sqlite3
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+
+# Entornos
+venv/
+.env
+*.env
+
+# Django / datos locales
+db.sqlite3
+/media/
+staticfiles/
+*.log
+
+# Node/Frontend (si tienes React)
+node_modules/
+dist/
+build/
+*.local
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
