@@ -63,6 +63,9 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',  # Solo los usuarios autenticados pueden acceder
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
     ],
 }
 
@@ -156,9 +159,12 @@ USE_TZ = True
 
 # APPEND_SLASH=False
 
+# Archivos subidos por usuarios (entregables, etc.)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'   # crea la carpeta si no existe
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
-
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'   # para producción (collectstatic)
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

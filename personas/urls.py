@@ -7,7 +7,6 @@ from .views import (
     asignar_curso_materia_profesor, 
     eliminar_curso_profesor, 
     buscar_personas,
-    importar_estudiantes,
     )
 
 router = DefaultRouter()
@@ -20,7 +19,5 @@ urlpatterns = [
     path('<int:persona_id>/cursos/<int:curso_id>/materias/<int:materia_id>/', asignar_curso_materia_profesor, name='asignar-curso-materia-profesor'),
     path('<int:persona_id>/cursos/<int:curso_id>/materias/<int:materia_id>/eliminar/', eliminar_curso_profesor, name='eliminar-curso-profesor'),
     path('buscar/', buscar_personas, name='buscar-personas'),
-    path('importar-estudiantes/', importar_estudiantes, name='importar-estudiantes'),
-
     path('', include(router.urls)),
 ]

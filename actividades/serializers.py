@@ -22,13 +22,21 @@ class ActividadCreateSerializer(serializers.ModelSerializer):
 
 class ActividadEntregaSerializer(serializers.ModelSerializer):
     estudiante_nombre = serializers.SerializerMethodField()
+    entregable_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ActividadEstudiante
-        fields = ['id','estudiante','estudiante_nombre','entregado_en','calificacion']
+        fields = ['id','estudiante','estudiante_nombre','entregado_en','calificacion','entregable_url']
 
     def get_estudiante_nombre(self, obj):
         return f"{obj.estudiante.nombre} {obj.estudiante.apellido}"
+
+    def get_entregable_url(self, obj):
+        try:
+            return obj.entregable.url if obj.entregable else None
+        except Exception:
+            return None
+
 
 class ActividadDetalleSerializer(serializers.ModelSerializer):
     entregas = ActividadEntregaSerializer(many=True, read_only=True)
