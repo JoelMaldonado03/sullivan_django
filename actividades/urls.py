@@ -11,4 +11,7 @@ urlpatterns = [
     path('actividad/<int:actividad_id>/entregas/', views.entregas_por_actividad),
     path('entrega/<int:actividad_estudiante_id>/', views.actualizar_entrega),
     path('entrega/<int:actividad_estudiante_id>/archivo/', views.subir_entregable),
+
+    path('curso/<int:curso_id>/matriz/', views.matriz_calificaciones_curso),
+
 ]

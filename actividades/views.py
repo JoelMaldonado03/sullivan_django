@@ -64,7 +64,7 @@ def detalle_actividad(request, actividad_id):
     data = ActividadDetalleSerializer(actividad, context={'request': request}).data
     return Response(data)
 
-# *** NUEVO: lee DIRECTO la tabla relación actividad_estudiante ***
+# *** LEE DIRECTO LA TABLA RELACIÓN ***
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def entregas_por_actividad(request, actividad_id):
@@ -110,8 +110,7 @@ def actividad_update_delete(request, actividad_id):
 @permission_classes([IsAuthenticated])
 def actualizar_entrega(request, actividad_estudiante_id):
     """
-    PATCH JSON:
-      { "entregado_en":"2025-09-13T10:30:00Z", "calificacion": 4.5 }
+    PATCH JSON: { "entregado_en":"2025-09-13T10:30:00Z", "calificacion": 4.5 }
     """
     ae = get_object_or_404(ActividadEstudiante, pk=actividad_estudiante_id)
     data = {}
@@ -127,7 +126,6 @@ def actualizar_entrega(request, actividad_estudiante_id):
     ser.save()
     return Response(ser.data)
 
-# *** NUEVO: subir/actualizar archivo del entregable (multipart/form-data) ***
 @api_view(['POST','PATCH'])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
@@ -148,3 +146,63 @@ def subir_entregable(request, actividad_estudiante_id):
     ae.save()
 
     return Response(ActividadEntregaSerializer(ae, context={'request': request}).data, status=200)
+
+# === NUEVO ===
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def matriz_calificaciones_curso(request, curso_id: int):
+    """
+    Devuelve en una sola llamada:
+    {
+      "actividades": [{id, titulo, fecha}, ...],
+      "estudiantes": [{id, nombre, apellido}, ...],
+      "celdas": [
+        {
+          "actividad_id": 21,
+          "estudiante_id": 11,
+          "actividad_estudiante_id": 123,
+          "calificacion": "4.5",
+          "entregado_en": "2025-09-13T00:39:37Z",
+          "entregable_url": "http://.../media/entregables/..."
+        }, ...
+      ]
+    }
+    ?todas=1 para incluir actividades de otros profesores del curso.
+    """
+    todas = request.query_params.get('todas') == '1'
+
+    acts_qs = Actividad.objects.filter(asignada_por__curso_id=curso_id)
+    if not todas:
+        try:
+            profesor = request.user.persona
+            acts_qs = acts_qs.filter(asignada_por__persona=profesor)
+        except Exception:
+            return Response({'detail': 'No asociado a persona.'}, status=400)
+
+    actividades = list(acts_qs.order_by('fecha','id').values('id','titulo','fecha'))
+    estudiantes = list(Estudiante.objects.filter(curso_id=curso_id).values('id','nombre','apellido'))
+
+    rel_qs = (ActividadEstudiante.objects
+              .select_related('actividad','estudiante')
+              .filter(actividad_id__in=[a['id'] for a in actividades]))
+
+    celdas = []
+    for ae in rel_qs:
+        try:
+            url = ae.entregable.url if ae.entregable else None
+        except Exception:
+            url = None
+        celdas.append({
+            'actividad_id': ae.actividad_id,
+            'estudiante_id': ae.estudiante_id,
+            'actividad_estudiante_id': ae.id,
+            'calificacion': (str(ae.calificacion) if ae.calificacion is not None else None),
+            'entregado_en': (ae.entregado_en.isoformat() if ae.entregado_en else None),
+            'entregable_url': url,
+        })
+
+    return Response({
+        'actividades': actividades,
+        'estudiantes': estudiantes,
+        'celdas': celdas,
+    })
