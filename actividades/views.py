@@ -1,3 +1,4 @@
+#actividades/views.py
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -64,7 +65,6 @@ def detalle_actividad(request, actividad_id):
     data = ActividadDetalleSerializer(actividad, context={'request': request}).data
     return Response(data)
 
-# *** LEE DIRECTO LA TABLA RELACIÓN ***
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def entregas_por_actividad(request, actividad_id):
@@ -75,16 +75,20 @@ def entregas_por_actividad(request, actividad_id):
     - todas: sin filtro
     """
     estado = (request.query_params.get('estado') or 'entregadas').lower()
-    qs = (ActividadEstudiante.objects
-          .select_related('estudiante')
-          .filter(actividad_id=actividad_id))
+    
+    # Obtener las entregas de la actividad filtradas según el estado
+    qs = ActividadEstudiante.objects.select_related('estudiante').filter(actividad_id=actividad_id)
+
     if estado == 'entregadas':
         qs = qs.exclude(entregado_en__isnull=True)
     elif estado == 'pendientes':
         qs = qs.filter(entregado_en__isnull=True)
 
-    ser = ActividadEntregaSerializer(qs.order_by('id'), many=True, context={'request': request})
-    return Response(ser.data)
+    # Serializar los resultados
+    entregas = ActividadEntregaSerializer(qs, many=True, context={'request': request}).data
+
+    # Devolver la respuesta
+    return Response(entregas)
 
 @api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
@@ -131,46 +135,31 @@ def actualizar_entrega(request, actividad_estudiante_id):
 @parser_classes([MultiPartParser, FormParser])
 def subir_entregable(request, actividad_estudiante_id):
     """
-    form-data:
-      entregable: <archivo>
-    Al subir, si no hay 'entregado_en', lo marca con now().
+    sube el archivo de entregable para la actividad del estudiante.
     """
     ae = get_object_or_404(ActividadEstudiante, pk=actividad_estudiante_id)
     archivo = request.FILES.get('entregable')
     if not archivo:
         return Response({'detail': "Falta archivo 'entregable'."}, status=400)
 
+    # Asignar el archivo
     ae.entregable = archivo
     if ae.entregado_en is None:
-        ae.entregado_en = now()
+        ae.entregado_en = now()  # Marcar como entregado
     ae.save()
 
     return Response(ActividadEntregaSerializer(ae, context={'request': request}).data, status=200)
 
-# === NUEVO ===
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def matriz_calificaciones_curso(request, curso_id: int):
     """
-    Devuelve en una sola llamada:
-    {
-      "actividades": [{id, titulo, fecha}, ...],
-      "estudiantes": [{id, nombre, apellido}, ...],
-      "celdas": [
-        {
-          "actividad_id": 21,
-          "estudiante_id": 11,
-          "actividad_estudiante_id": 123,
-          "calificacion": "4.5",
-          "entregado_en": "2025-09-13T00:39:37Z",
-          "entregable_url": "http://.../media/entregables/..."
-        }, ...
-      ]
-    }
-    ?todas=1 para incluir actividades de otros profesores del curso.
+    Devuelve las calificaciones de actividades para un curso, las actividades del curso, 
+    los estudiantes, y los datos completos de las entregas de los estudiantes.
     """
     todas = request.query_params.get('todas') == '1'
 
+    # Obtener todas las actividades del curso
     acts_qs = Actividad.objects.filter(asignada_por__curso_id=curso_id)
     if not todas:
         try:
@@ -179,12 +168,11 @@ def matriz_calificaciones_curso(request, curso_id: int):
         except Exception:
             return Response({'detail': 'No asociado a persona.'}, status=400)
 
-    actividades = list(acts_qs.order_by('fecha','id').values('id','titulo','fecha'))
-    estudiantes = list(Estudiante.objects.filter(curso_id=curso_id).values('id','nombre','apellido'))
+    actividades = list(acts_qs.order_by('fecha', 'id').values('id', 'titulo', 'fecha'))
+    estudiantes = list(Estudiante.objects.filter(curso_id=curso_id).values('id', 'nombre', 'apellido'))
 
-    rel_qs = (ActividadEstudiante.objects
-              .select_related('actividad','estudiante')
-              .filter(actividad_id__in=[a['id'] for a in actividades]))
+    # Filtrar las entregas de las actividades
+    rel_qs = ActividadEstudiante.objects.select_related('actividad', 'estudiante').filter(actividad_id__in=[a['id'] for a in actividades])
 
     celdas = []
     for ae in rel_qs:
@@ -201,8 +189,32 @@ def matriz_calificaciones_curso(request, curso_id: int):
             'entregable_url': url,
         })
 
+    # Devolver la respuesta con las actividades, estudiantes y celdas
     return Response({
         'actividades': actividades,
         'estudiantes': estudiantes,
         'celdas': celdas,
     })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def entregas_por_estudiante(request, estudiante_id: int):
+    """
+    GET /actividades/estudiante/<estudiante_id>/?estado=todas|pendientes|entregadas
+    Devuelve las filas de ActividadEstudiante de ese estudiante con datos de la actividad.
+    """
+    estado = (request.query_params.get('estado') or 'todas').lower()
+
+    # Consultar las entregas de actividades de un estudiante
+    qs = ActividadEstudiante.objects.select_related('actividad').filter(estudiante_id=estudiante_id)
+
+    if estado == 'pendientes':
+        qs = qs.filter(entregado_en__isnull=True)
+    elif estado == 'entregadas':
+        qs = qs.filter(entregado_en__isnull=False)
+
+    # Serializar las entregas
+    entregas = ActividadEntregaSerializer(qs, many=True, context={'request': request}).data
+
+    # Retornar la respuesta con los datos serializados
+    return Response(entregas)

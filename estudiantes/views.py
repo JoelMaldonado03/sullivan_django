@@ -1,3 +1,4 @@
+#estudiantes/views.py
 from django.shortcuts import render
 
 # Create your views here.
@@ -8,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Estudiante
-from .serializers import EstudianteSerializer
+from .serializers import EstudianteSerializer, EstudianteMiniSerializer
 from personas.models import Persona, PersonaEstudiante
 from personas.serializers import PersonaSerializer
 
@@ -16,6 +17,33 @@ class EstudianteViewSet(viewsets.ModelViewSet):
     queryset = Estudiante.objects.all()
     serializer_class = EstudianteSerializer
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mis_estudiantes(request):
+    """
+    Devuelve los estudiantes donde la persona del usuario autenticado
+    es acudiente. Asume que tienes una relación ManyToMany Estudiante<->Persona
+    vía un 'through' (acudientes). Si tu modelo se llama distinto, ajusta el filtro.
+    """
+    persona = getattr(request.user, 'persona', None)
+    if persona is None:
+        return Response({'detail': 'Usuario sin persona asociada'}, status=400)
+
+    # Opción A (si tienes ManyToMany: Estudiante.acudientes)
+    try:
+        qs = (Estudiante.objects
+              .select_related('curso')
+              .filter(acudientes=persona))
+    except Exception:
+        # Opción B: si usas un through explícito p.e. AcudienteEstudiante(persona, estudiante)
+        est_ids = (PersonaEstudiante.objects
+                   .filter(persona=persona)
+                   .values_list('estudiante_id', flat=True))
+        qs = Estudiante.objects.select_related('curso').filter(id__in=est_ids)
+
+    data = EstudianteMiniSerializer(qs, many=True).data
+    return Response(data)
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
