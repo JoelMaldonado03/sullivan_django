@@ -15,7 +15,7 @@ class UsuarioInlineSerializer(serializers.ModelSerializer):
 
 class PersonaSerializer(serializers.ModelSerializer):
     usuario = UsuarioInlineSerializer()
-
+    foto_url = serializers.SerializerMethodField()
     class Meta:
         model = Persona
         fields = [
@@ -63,6 +63,11 @@ class PersonaSerializer(serializers.ModelSerializer):
 
         return super().update(instance, validated_data)
 
-
+    def get_foto_url(self, obj):
+        try:
+            return obj.foto.url if obj.foto else None
+        except Exception:
+            return None
+        
 class CargaEstudiantesSerializer(serializers.Serializer):
     file = serializers.FileField()

@@ -6,7 +6,7 @@ class Estudiante(models.Model):
         ('RC', 'Registro Civil'),
         ('TI', 'Tarjeta de Identidad'),
     )
-
+    
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     fecha_nacimiento = models.DateField(null=True, blank=True)
@@ -17,7 +17,7 @@ class Estudiante(models.Model):
         max_length=10, choices=TIPO_DOC_CHOICES, null=True, blank=True
     )
     numero_documento = models.CharField(max_length=30, null=True, blank=True)
-
+    foto = models.ImageField(upload_to='avatars/estudiantes/', null=True, blank=True)
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE)
 
     class Meta:

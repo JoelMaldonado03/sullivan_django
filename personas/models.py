@@ -12,6 +12,7 @@ class Persona(models.Model):
     numero_documento = models.CharField(max_length=20, unique=True)
     direccion = models.CharField(max_length=100)
     fecha_nacimiento = models.DateField()
+    foto = models.ImageField(upload_to='avatars/personas/', null=True, blank=True)
 
     
     class Meta:
