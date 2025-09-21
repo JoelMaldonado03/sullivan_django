@@ -8,8 +8,12 @@ class EstudianteSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_foto_url(self, obj):
+        if not obj.foto:
+            return None
+        request = self.context.get('request')
         try:
-            return obj.foto.url if obj.foto else None
+            url = obj.foto.url
+            return request.build_absolute_uri(url) if request else url
         except Exception:
             return None
         
@@ -22,7 +26,8 @@ class EstudianteMiniSerializer(serializers.ModelSerializer):
             'id','nombre','apellido',
             'tipo_documento','numero_documento',
             'telefono','direccion','correo_electronico',
-            'curso'
+            'fecha_nacimiento',
+            'curso', 'foto_url'
         ]
 
     def get_curso(self, obj):
@@ -31,7 +36,11 @@ class EstudianteMiniSerializer(serializers.ModelSerializer):
         return {'id': c.id, 'nombre_curso': getattr(c, 'nombre_curso', str(c))}
     
     def get_foto_url(self, obj):
+        if not obj.foto:
+            return None
+        request = self.context.get('request')
         try:
-            return obj.foto.url if obj.foto else None
+            url= obj.foto.url if obj.foto else None
+            return request.build_absolute_uri(url) if request else url
         except Exception:
             return None

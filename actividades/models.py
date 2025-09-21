@@ -23,7 +23,7 @@ class Actividad(models.Model):
 
 class ActividadEstudiante(models.Model):
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE)
-    actividad = models.ForeignKey(Actividad, on_delete=models.CASCADE)
+    actividad = models.ForeignKey(Actividad, on_delete=models.CASCADE, related_name='entregas')
     entregado_en= models.DateTimeField(null=True, blank=True)
     entregable = models.FileField(upload_to='entregables/', null=True, blank=True)
     calificacion = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)

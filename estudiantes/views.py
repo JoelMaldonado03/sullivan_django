@@ -4,8 +4,9 @@ from django.shortcuts import render
 # Create your views here.
 from rest_framework import viewsets, status
 from django.shortcuts import get_object_or_404
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes,  parser_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
 from .models import Estudiante
@@ -42,7 +43,7 @@ def mis_estudiantes(request):
                    .values_list('estudiante_id', flat=True))
         qs = Estudiante.objects.select_related('curso').filter(id__in=est_ids)
 
-    data = EstudianteMiniSerializer(qs, many=True).data
+    data = EstudianteMiniSerializer(qs, many=True, context={'request': request}).data
     return Response(data)
 
 @api_view(['GET', 'POST'])
@@ -87,3 +88,23 @@ def remover_acudiente_de_estudiante(request, estudiante_id, persona_id):
     est = get_object_or_404(Estudiante, pk=estudiante_id)
     PersonaEstudiante.objects.filter(estudiante=est, persona_id=persona_id).delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+@api_view(['POST','PATCH','DELETE'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def estudiante_avatar(request, estudiante_id):
+    est = get_object_or_404(Estudiante, pk=estudiante_id)
+
+    if request.method in ['POST','PATCH']:
+        f = request.FILES.get('foto')
+        if not f:
+            return Response({'detail': "Envíe archivo 'foto'."}, status=400)
+        est.foto = f
+        est.save()
+        return Response(EstudianteSerializer(est, context={'request': request}).data)
+
+    # DELETE
+    est.foto.delete(save=True)
+    return Response(EstudianteSerializer(est, context={'request': request}).data)

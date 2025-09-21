@@ -6,6 +6,12 @@ from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
+import mimetypes
+import os
+from django.http import FileResponse, Http404
+from django.urls import reverse
+from personas.models import PersonaEstudiante, CursoProfesorMateria
+
 
 from .models import Actividad, ActividadEstudiante
 from .serializers import (
@@ -13,6 +19,7 @@ from .serializers import (
     ActividadCreateSerializer,
     ActividadDetalleSerializer,
     ActividadEntregaSerializer,
+    ActividadEntregaFullSerializer,
 )
 from estudiantes.models import Estudiante
 
@@ -201,20 +208,99 @@ def matriz_calificaciones_curso(request, curso_id: int):
 def entregas_por_estudiante(request, estudiante_id: int):
     """
     GET /actividades/estudiante/<estudiante_id>/?estado=todas|pendientes|entregadas
-    Devuelve las filas de ActividadEstudiante de ese estudiante con datos de la actividad.
+    Devuelve filas de ActividadEstudiante con info de la actividad + archivo.
     """
     estado = (request.query_params.get('estado') or 'todas').lower()
 
-    # Consultar las entregas de actividades de un estudiante
-    qs = ActividadEstudiante.objects.select_related('actividad').filter(estudiante_id=estudiante_id)
+    qs = (ActividadEstudiante.objects
+          .select_related('actividad')
+          .filter(estudiante_id=estudiante_id))
 
     if estado == 'pendientes':
         qs = qs.filter(entregado_en__isnull=True)
     elif estado == 'entregadas':
         qs = qs.filter(entregado_en__isnull=False)
 
-    # Serializar las entregas
-    entregas = ActividadEntregaSerializer(qs, many=True, context={'request': request}).data
+    payload = []
+    for ae in qs.order_by('-actividad__fecha', '-actividad__id'):
+        a = ae.actividad
+        # URL de previsualización (la propia URL de media si existe)
+        try:
+            preview_url = ae.entregable.url if ae.entregable else None
+        except Exception:
+            preview_url = None
 
-    # Retornar la respuesta con los datos serializados
-    return Response(entregas)
+        # Metadatos de archivo
+        if ae.entregable:
+            path = ae.entregable.path
+            mime, _ = mimetypes.guess_type(path)
+            filename = os.path.basename(path)
+        else:
+            mime = None
+            filename = None
+
+        # URL de descarga (forzada)
+        download_url = request.build_absolute_uri(
+            reverse('descargar-entregable', args=[ae.id])
+        )
+
+        payload.append({
+            'id': ae.id,  # id de ActividadEstudiante
+            'actividad_estudiante_id': ae.id,
+            'actividad_id': a.id,
+            'titulo': a.titulo,
+            'descripcion': a.descripcion,
+            'fecha': a.fecha.isoformat() if a.fecha else None,
+            'fecha_entrega': a.fecha_entrega.isoformat() if a.fecha_entrega else None,
+            'entregado_en': ae.entregado_en.isoformat() if ae.entregado_en else None,
+            'calificacion': str(ae.calificacion) if ae.calificacion is not None else None,
+
+            # archivo
+            'entregable_url': preview_url,   # para previsualización inline
+            'download_url': download_url,    # descarga forzada
+            'mime': mime,
+            'filename': filename,
+        })
+
+    return Response(payload)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def descargar_entregable(request, actividad_estudiante_id: int):
+    """
+    Fuerza la descarga del archivo del entregable con Content-Disposition: attachment.
+    Permisos:
+      - superuser
+      - acudiente del estudiante
+      - profesor del curso del estudiante
+    """
+    ae = get_object_or_404(ActividadEstudiante, pk=actividad_estudiante_id)
+
+    # --- autorización básica ---
+    persona = getattr(request.user, 'persona', None)
+    allowed = request.user.is_superuser
+    if persona and not allowed:
+        # Acudiente
+        if PersonaEstudiante.objects.filter(persona=persona, estudiante=ae.estudiante).exists():
+            allowed = True
+        # Profesor del curso
+        elif CursoProfesorMateria.objects.filter(persona=persona, curso=ae.estudiante.curso).exists():
+            allowed = True
+    if not allowed:
+        return Response({'detail': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+
+    if not ae.entregable:
+        raise Http404('No hay archivo para esta entrega.')
+
+    path = ae.entregable.path
+    mime, _ = mimetypes.guess_type(path)
+    filename = os.path.basename(path)
+
+    response = FileResponse(open(path, 'rb'), content_type=mime or 'application/octet-stream')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    try:
+        response['Content-Length'] = ae.entregable.size
+    except Exception:
+        pass
+    return response

@@ -16,4 +16,6 @@ urlpatterns = [
     path('curso/<int:curso_id>/matriz/', views.matriz_calificaciones_curso),
     path('estudiante/<int:estudiante_id>/', views.entregas_por_estudiante, name='entregas-por-estudiante'),
 
+    # NUEVO: descarga forzada
+    path('entrega/<int:actividad_estudiante_id>/download/', views.descargar_entregable, name='descargar-entregable'),
 ]

@@ -37,13 +37,13 @@ def persona_me(request):
         return Response({"detail": "Persona no encontrada para este usuario."}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':
-        return Response(PersonaSerializer(persona).data)
+        return Response(PersonaSerializer(persona, context={'request': request}).data)
 
     # PATCH
     serializer = PersonaSerializer(persona, data=request.data, partial=True)
     if serializer.is_valid():
         persona_actualizada = serializer.save()
-        return Response(PersonaSerializer(persona_actualizada).data)
+        return Response(PersonaSerializer(persona_actualizada, context={'request': request}).data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -112,6 +112,8 @@ def eliminar_curso_profesor(request, persona_id, curso_id, materia_id):
         status=status.HTTP_404_NOT_FOUND
     )
 
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def buscar_personas(request):
@@ -128,5 +130,25 @@ def buscar_personas(request):
         else:
             qs = qs.filter(Q(nombre__icontains=q) | Q(apellido__icontains=q))
     qs = qs.order_by('apellido','nombre')[:20]
-    return Response(PersonaSerializer(qs, many=True).data)
+    return Response(PersonaSerializer(qs, many=True, context={'request': request}).data)
 
+
+
+
+@api_view(['POST','PATCH','DELETE'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def persona_avatar(request, persona_id):
+    persona = get_object_or_404(Persona, pk=persona_id)
+
+    if request.method in ['POST', 'PATCH']:
+        f = request.FILES.get('foto')
+        if not f:
+            return Response({'detail': "Envíe archivo 'foto'."}, status=400)
+        persona.foto = f
+        persona.save()
+        return Response(PersonaSerializer(persona, context={'request': request}).data)
+
+    # DELETE
+    persona.foto.delete(save=True)
+    return Response(PersonaSerializer(persona, context={'request': request}).data)

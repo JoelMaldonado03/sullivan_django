@@ -27,7 +27,8 @@ class PersonaSerializer(serializers.ModelSerializer):
             'numero_documento',
             'direccion',
             'fecha_nacimiento',
-            'usuario'  
+            'usuario',
+            'foto_url'
         ]
     def create(self, validated_data):
         user_data = validated_data.pop('usuario')
@@ -64,8 +65,12 @@ class PersonaSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
     def get_foto_url(self, obj):
+        if not obj.foto:
+            return None
+        request = self.context.get('request')
         try:
-            return obj.foto.url if obj.foto else None
+            url= obj.foto.url if obj.foto else None
+            return request.build_absolute_uri(url) if request else url
         except Exception:
             return None
         

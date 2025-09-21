@@ -43,3 +43,27 @@ class ActividadDetalleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Actividad
         fields = ['id','titulo','descripcion','fecha','fecha_entrega','asignada_por','entregas']
+
+
+class ActividadEntregaFullSerializer(serializers.ModelSerializer):
+    actividad_estudiante_id = serializers.IntegerField(source='id', read_only=True)
+    actividad_id = serializers.IntegerField(source='actividad.id', read_only=True)
+    titulo = serializers.CharField(source='actividad.titulo', read_only=True)
+    descripcion = serializers.CharField(source='actividad.descripcion', read_only=True)
+    fecha = serializers.DateField(source='actividad.fecha', read_only=True)
+    fecha_entrega = serializers.DateField(source='actividad.fecha_entrega', read_only=True)
+    entregable_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ActividadEstudiante
+        fields = [
+            'actividad_estudiante_id', 'actividad_id',
+            'titulo', 'descripcion', 'fecha', 'fecha_entrega',
+            'entregado_en', 'calificacion', 'entregable_url'
+        ]
+
+    def get_entregable_url(self, obj):
+        try:
+            return obj.entregable.url if obj.entregable else None
+        except Exception:
+            return None
