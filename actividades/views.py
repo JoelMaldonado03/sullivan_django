@@ -224,12 +224,15 @@ def entregas_por_estudiante(request, estudiante_id: int):
     payload = []
     for ae in qs.order_by('-actividad__fecha', '-actividad__id'):
         a = ae.actividad
-        # URL de previsualización (la propia URL de media si existe)
-        try:
-            preview_url = ae.entregable.url if ae.entregable else None
-        except Exception:
+        
+        if ae.entregable:
+            try:
+                rel_url = ae.entregable.url
+                preview_url = request.build_absolute_uri(rel_url)  # <- ABSOLUTA
+            except Exception:
+                preview_url = None
+        else:
             preview_url = None
-
         # Metadatos de archivo
         if ae.entregable:
             path = ae.entregable.path
