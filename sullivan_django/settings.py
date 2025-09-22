@@ -27,7 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
+WKHTMLTOPDF_CMD = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
 # Application definition
 
 INSTALLED_APPS = [
@@ -42,14 +42,15 @@ INSTALLED_APPS = [
     'drf_yasg',     # Swagger documentation
     'rest_framework',  # Django REST Framework
     'rest_framework.authtoken',  # Token Authentication
-    'estudiantes',
-    'asignaciones',
-    'personas',
-    'cursos',
-    'materias',
-    'clases',
+    'academico',
     'actividades',
+    'asignaciones',
+    'clases',
+    'cursos',
+    'estudiantes',
     'eventos',
+    'materias',
+    'personas',
     'usuarios',
 ]
 
@@ -91,7 +92,7 @@ STATIC_URL = 'static/'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [ BASE_DIR / 'templates' ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -113,11 +114,10 @@ DATABASES = {
         'NAME': 'sullivan',
         'USER': 'root',
         'PASSWORD': '',
-        'HOST': 'localhost',
-        'PORT': '3306'
+        'HOST': 'localhost',  
+        'PORT': '3306',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

@@ -3,13 +3,14 @@ from django.db import models
 from estudiantes.models import Estudiante
 from cursos.models import Curso
 from personas.models import CursoProfesorMateria
-
+from academico.models import Periodo
 class Actividad(models.Model):
     titulo     = models.CharField(max_length=100)
     descripcion= models.TextField()
     fecha      = models.DateField()
     fecha_entrega= models.DateField(null=True, blank=True)
-    
+    periodo = models.ForeignKey(Periodo, on_delete=models.SET_NULL, null=True, blank=True)
+    peso = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # % o puntos
     asignada_por = models.ForeignKey(
         CursoProfesorMateria,
         on_delete=models.CASCADE,

@@ -59,7 +59,8 @@ urlpatterns = [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('usuarios/', include('usuarios.urls')),
     path('asignaciones/', include('asignaciones.urls')),
-    
+    path('academico/', include('academico.urls')),
+
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
