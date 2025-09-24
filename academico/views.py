@@ -85,3 +85,43 @@ def boletin_curso_pdf(request, curso_id: int, periodo_id: int):
     resp = HttpResponse(pdf_bytes, content_type='application/pdf')
     resp['Content-Disposition'] = f'attachment; filename="{filename}"'
     return resp
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def contexto_academico(request):
+    """
+    Devuelve:
+      - anio_actual: año calendario actual
+      - periodo_actual: el periodo “en curso” (el siguiente al último que ya terminó)
+      - periodos_disponibles: lista de números de periodos cerrados (< periodo_actual)
+    Si no hay filas en Periodo para el año actual, hace un fallback por meses.
+    """
+    hoy = timezone.now().date()
+    anio_actual = hoy.year
+
+    qs = Periodo.objects.filter(anio=anio_actual).order_by('numero')
+    if not qs.exists():
+        # Fallback: divide el año por trimestres/cuatrimestres según tu política.
+        # Ejemplo simple: 4 periodos => cada 3 meses
+        periodo_actual = ((hoy.month - 1) // 3) + 1
+        periodos_disponibles = list(range(1, max(1, periodo_actual)))
+        return Response({
+            'anio_actual': anio_actual,
+            'periodo_actual': periodo_actual,
+            'periodos_disponibles': periodos_disponibles,
+        })
+
+    # “Actual” = siguiente al último que ya terminó (o el primero si ninguno terminó)
+    ultimo_cerrado = qs.filter(fecha_fin__lt=hoy).order_by('-numero').first()
+    if ultimo_cerrado:
+        periodo_actual = min(ultimo_cerrado.numero + 1, qs.last().numero)
+    else:
+        periodo_actual = qs.first().numero
+
+    periodos_disponibles = [n for n in qs.values_list('numero', flat=True) if n < periodo_actual]
+
+    return Response({
+        'anio_actual': anio_actual,
+        'periodo_actual': periodo_actual,
+        'periodos_disponibles': periodos_disponibles,
+    })
